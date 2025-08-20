@@ -14,11 +14,20 @@ const CustomerPage: React.FC = () => {
 
   const loadData = async () => {
     setLoading(true);
-    const res = await getCustomers();
-    setData(res || []);
-    const siteRes = await getSites();
-    setSites(siteRes || []);
-    setLoading(false);
+    try {
+      // 确保数据是数组，非数组时默认空数组
+      const customerRes = await getCustomers();
+      setData(Array.isArray(customerRes) ? customerRes : []);
+
+      const siteRes = await getSites();
+      setSites(Array.isArray(siteRes) ? siteRes : []);
+    } catch (error) {
+      console.error('加载数据失败:', error);
+      setData([]);
+      setSites([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -38,7 +47,8 @@ const CustomerPage: React.FC = () => {
       form.resetFields();
       setEditingRecord(null);
       loadData();
-    } catch {
+    } catch (error) {
+      console.error('操作失败:', error);
       message.error('操作失败');
     }
   };
@@ -50,9 +60,14 @@ const CustomerPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    await deleteCustomer(id);
-    message.success('删除成功');
-    loadData();
+    try {
+      await deleteCustomer(id);
+      message.success('删除成功');
+      loadData();
+    } catch (error) {
+      console.error('删除失败:', error);
+      message.error('删除失败');
+    }
   };
 
   return (
@@ -101,7 +116,11 @@ const CustomerPage: React.FC = () => {
           </Form.Item>
           <Form.Item name="siteId" label="场地类型" rules={[{ required: true, message: '请选择场地类型' }]}>
             <Select>
-              {sites.map(s => <Select.Option key={s.id} value={s.id}>{s.name}</Select.Option>)}
+              {sites.map(s => (
+                <Select.Option key={s.id} value={s.id}>
+                  {s.name}
+                </Select.Option>
+              ))}
             </Select>
           </Form.Item>
         </Form>

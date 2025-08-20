@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Button, Modal, Form, Input, message } from 'antd';
+import { Table, Button, Modal, Form, Input, message, Select } from 'antd'; // 补充导入 Select
 import { getAssets, createAsset, updateAsset, deleteAsset } from '@/services/asset';
 import { getCustomers } from '@/services/customer';
 
@@ -12,11 +12,22 @@ const AssetPage: React.FC = () => {
 
   const [form] = Form.useForm();
 
+  // 修复数据加载时的类型安全问题（避免非数组导致的错误）
   const loadData = async () => {
     setLoading(true);
-    setData(await getAssets() || []);
-    setCustomers(await getCustomers() || []);
-    setLoading(false);
+    try {
+      const assetRes = await getAssets();
+      setData(Array.isArray(assetRes) ? assetRes : []);
+
+      const customerRes = await getCustomers();
+      setCustomers(Array.isArray(customerRes) ? customerRes : []);
+    } catch (error) {
+      console.error('加载数据失败:', error);
+      setData([]);
+      setCustomers([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -36,7 +47,8 @@ const AssetPage: React.FC = () => {
       form.resetFields();
       setEditingRecord(null);
       loadData();
-    } catch {
+    } catch (error) {
+      console.error('操作失败:', error);
       message.error('操作失败');
     }
   };
@@ -48,9 +60,14 @@ const AssetPage: React.FC = () => {
   };
 
   const handleDelete = async (id: string) => {
-    await deleteAsset(id);
-    message.success('删除成功');
-    loadData();
+    try {
+      await deleteAsset(id);
+      message.success('删除成功');
+      loadData();
+    } catch (error) {
+      console.error('删除失败:', error);
+      message.error('删除失败');
+    }
   };
 
   return (
@@ -95,7 +112,11 @@ const AssetPage: React.FC = () => {
         <Form form={form} layout="vertical">
           <Form.Item name="customerId" label="客户" rules={[{ required: true, message: '请选择客户' }]}>
             <Select>
-              {customers.map(c => <Select.Option key={c.id} value={c.id}>{c.projectName}</Select.Option>)}
+              {customers.map(c => (
+                <Select.Option key={c.id} value={c.id}>
+                  {c.projectName}
+                </Select.Option>
+              ))}
             </Select>
           </Form.Item>
           <Form.Item name="server" label="服务器资源">
